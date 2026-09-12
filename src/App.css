@@ -1,0 +1,148 @@
+.app-shell {
+  min-height: 100vh;
+}
+
+.workspace {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0.85rem auto 2rem;
+}
+
+.workspace__body {
+  margin-top: 1.35rem;
+}
+
+.workspace--split {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 1.15rem;
+  align-items: start;
+}
+
+.app-body {
+  min-width: 0;
+  margin-top: 0.35rem;
+}
+
+.app-body > main {
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .workspace--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.topnav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem 1.25rem;
+  margin: 0;
+  width: 100%;
+  padding: 0.55rem 0.65rem 0.55rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(7, 17, 31, 0.94);
+  color: #f4f8ff;
+  box-shadow: 0 16px 40px rgba(7, 17, 31, 0.22);
+  position: relative;
+  z-index: 1;
+}
+
+.topnav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #fff;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.brand-mark {
+  display: block;
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.topnav__identity {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.topnav__name {
+  font-family: var(--font-display);
+  font-weight: 680;
+  font-size: 1.05rem;
+  letter-spacing: -0.03em;
+}
+
+.topnav__tagline {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #8ec8ff;
+}
+
+
+.topnav__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.topnav__link {
+  text-decoration: none;
+  color: rgba(232, 242, 255, 0.72);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.48rem 0.8rem;
+  border-radius: 999px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.topnav__link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.topnav__link.is-active {
+  color: #fff;
+  background: linear-gradient(180deg, #3aa4ff, #1c8dff);
+}
+
+.topnav__button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.user-pill {
+  margin-left: 0.25rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #8ec8ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 720px) {
+  .topnav {
+    border-radius: 22px;
+  }
+
+  .topnav__tagline,
+  .user-pill {
+    display: none;
+  }
+}
