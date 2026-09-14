@@ -2,8 +2,10 @@ import { NavLink } from 'react-router-dom'
 import './SideNav.css'
 
 const LINKS = [
-  { to: '/admin/blocklist', label: 'Home', end: false },
+  { to: '/admin/blocklist', label: 'Home', end: true },
   { to: '/blocklist', label: 'Blocklist', end: true },
+  { to: '/admin/policy', label: 'Policy', end: true },
+  { to: '/admin/sites', label: 'Script', end: true },
 ]
 
 export default function SideNav() {

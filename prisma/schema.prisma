@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum RuleType {
+  URL
+  DOMAIN
+  KEYWORD
+  CATEGORY
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members  OrganizationMember[]
+  sites    Site[]
+  policies Policy[]
+  events   BlockEvent[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  memberships OrganizationMember[]
+
+  @@map("users")
+}
+
+model OrganizationMember {
+  id             String     @id @default(uuid())
+  organizationId String     @map("organization_id")
+  userId         String     @map("user_id")
+  role           MemberRole
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+model Site {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  domain         String
+  policyId       String?  @map("policy_id")
+  active         Boolean  @default(true)
+  siteKey        String?  @unique @map("site_key")
+  keyActive      Boolean  @default(true) @map("key_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  policy       Policy?      @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  events       BlockEvent[]
+
+  @@unique([organizationId, domain])
+  @@index([organizationId])
+  @@index([policyId])
+  @@map("sites")
+}
+
+model Policy {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  description    String?
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sites           Site[]
+  blockedUrls     BlockedUrl[]
+  blockedDomains  BlockedDomain[]
+  blockedKeywords BlockedKeyword[]
+  categories      PolicyCategory[]
+  events          BlockEvent[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("policies")
+}
+
+model BlockedUrl {
+  id        String   @id @default(uuid())
+  policyId  String   @map("policy_id")
+  url       String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, url])
+  @@index([policyId])
+  @@map("blocked_urls")
+}
+
+model BlockedDomain {
+  id        String   @id @default(uuid())
+  policyId  String   @map("policy_id")
+  domain    String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, domain])
+  @@index([policyId])
+  @@map("blocked_domains")
+}
+
+model BlockedKeyword {
+  id        String   @id @default(uuid())
+  policyId  String   @map("policy_id")
+  keyword   String
+  language  String
+  category  String?  @map("category")
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, keyword, language])
+  @@index([policyId])
+  @@map("blocked_keywords")
+}
+
+model PolicyCategory {
+  id        String   @id @default(uuid())
+  policyId  String   @map("policy_id")
+  category  String
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, category])
+  @@index([policyId])
+  @@map("policy_categories")
+}
+
+model BlockEvent {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  siteId          String   @map("site_id")
+  policyId        String   @map("policy_id")
+  matchedRuleType RuleType @map("matched_rule_type")
+  matchedRuleId   String?  @map("matched_rule_id")
+  matchedUrl      String?  @map("matched_url")
+  matchedDomain   String?  @map("matched_domain")
+  matchedKeyword  String?  @map("matched_keyword")
+  matchedCategory String?  @map("matched_category")
+  pageLoadId      String?  @map("page_load_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  policy       Policy       @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([siteId, createdAt])
+  @@index([policyId, createdAt])
+  @@index([matchedRuleType, matchedRuleId])
+  @@map("block_events")
+}

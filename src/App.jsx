@@ -3,6 +3,8 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'reac
 import SideNav from './components/SideNav'
 import AdminBlocklist from './pages/AdminBlocklist'
 import BlocklistPage from './pages/BlocklistPage'
+import PolicyPage from './pages/PolicyPage'
+import SitesPage from './pages/SitesPage'
 import DemoPage from './pages/DemoPage'
 import Login from './pages/Login'
 import { getUsername, isLoggedIn, logout, verifySession } from './services/auth'
@@ -132,6 +134,22 @@ export default function App() {
             element={
               <RequireAuth>
                 <AdminBlocklist />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/policy"
+            element={
+              <RequireAuth>
+                <PolicyPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/sites"
+            element={
+              <RequireAuth>
+                <SitesPage />
               </RequireAuth>
             }
           />

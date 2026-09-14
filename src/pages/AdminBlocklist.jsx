@@ -33,19 +33,6 @@ export default function AdminBlocklist() {
   const [busy, setBusy] = useState(false)
   const [highlightId, setHighlightId] = useState(null)
   const username = getUsername()
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173'
-
-  const embedSnippet = `<!-- 1) Mark each ad slot with the AD URL -->
-<div class="adpage-slot" data-ad-url="https://example.com/bad-ad" style="width:300px;height:250px">
-  Your ad HTML here
-</div>
-
-<!-- 2) Load the blocker (any landing page) -->
-<script
-  src="${origin}/adpage-blocker.js"
-  data-api-base="${origin}"
-  defer
-></script>`
 
   const refresh = async () => {
     const next = await listBlocklistedUrls()
@@ -114,15 +101,6 @@ export default function AdminBlocklist() {
     showMessage('success', 'URL added. Use Blocklist to remove it.')
   }
 
-  const copyEmbed = async () => {
-    try {
-      await navigator.clipboard.writeText(embedSnippet)
-      showMessage('success', 'Embed snippet copied.')
-    } catch {
-      showMessage('error', 'Could not copy — select the snippet manually.')
-    }
-  }
-
   return (
     <div className="admin">
       <header className="admin__header">
@@ -136,8 +114,8 @@ export default function AdminBlocklist() {
           <p className="tagline">See a sus ad? Snitch on it.</p>
           <p className="lede">
             Signed in as <strong>{username || 'admin'}</strong>. Block ads by
-            their ad URL. The same list is used by the React demo and by{' '}
-            <code>adpage-blocker.js</code> on any landing page.
+            their ad URL. Install the customer script from Sites. Do not paste a
+            localhost script onto an HTTPS page.
           </p>
         </div>
       </header>
@@ -274,16 +252,16 @@ export default function AdminBlocklist() {
           <h2 id="embed-heading">Use on any landing page</h2>
         </div>
         <p className="embed__lede">
-          Add <code>data-ad-url</code> on each ad slot, then paste this script.
-          Try the sample page:{' '}
+          Mark each slot with <code>data-ad-url</code>, then copy the minimized
+          script from Sites. Do not install a localhost script on an HTTPS page.
+          Local sample:{' '}
           <a href="/sample-landing.html" target="_blank" rel="noreferrer">
             /sample-landing.html
           </a>
         </p>
-        <pre className="embed__code">{embedSnippet}</pre>
-        <button type="button" className="btn-primary" onClick={copyEmbed}>
-          Copy embed snippet
-        </button>
+        <a className="btn-primary" href="/admin/sites" style={{ display: 'inline-block', textDecoration: 'none' }}>
+          Open Sites
+        </a>
       </section>
     </div>
   )

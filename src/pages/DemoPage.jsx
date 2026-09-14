@@ -77,7 +77,7 @@ export default function DemoPage() {
   useEffect(() => {
     let cancelled = false
     const refresh = async () => {
-      const next = await getBlocklistSnapshot()
+      const next = await getBlocklistSnapshot(DEMO_ADS)
       if (!cancelled) setSnapshot(next)
     }
     refresh()

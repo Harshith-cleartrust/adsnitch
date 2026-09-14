@@ -1,98 +1,37 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DATA_DIR = path.resolve(__dirname, 'data')
-const DATA_FILE = path.join(DATA_DIR, 'blocklist.json')
-
-function isAllowedHostname(hostname) {
-  const host = String(hostname || '').toLowerCase()
-  if (!host) return false
-  if (host === 'localhost' || host.endsWith('.localhost')) return true
-  return host.includes('.')
-}
-
-function normalizeAdUrl(raw) {
-  const trimmed = String(raw ?? '').trim()
-  if (!trimmed) throw new Error('URL is required.')
-
-  let withProtocol = trimmed
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
-    withProtocol = `https://${trimmed}`
-  }
-
-  const parsed = new URL(withProtocol)
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('Only http and https URLs are allowed.')
-  }
-  if (!isAllowedHostname(parsed.hostname)) {
-    throw new Error('Enter a valid URL with a hostname.')
-  }
-
-  parsed.hostname = parsed.hostname.toLowerCase()
-  parsed.hash = ''
-  let pathname = parsed.pathname
-  if (pathname.length > 1 && pathname.endsWith('/')) {
-    pathname = pathname.slice(0, -1)
-  }
-  parsed.pathname = pathname || '/'
-  return parsed.toString()
-}
-
-function ensureStore() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, '[]', 'utf8')
-  }
-}
-
-function readEntries() {
-  ensureStore()
-  try {
-    const parsed = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'))
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function writeEntries(entries) {
-  ensureStore()
-  fs.writeFileSync(DATA_FILE, JSON.stringify(entries, null, 2), 'utf8')
-}
+import { handlePolicyRequest } from './src/server/policy-http.js'
+import { handleSiteRequest } from './src/server/site-http.js'
+import { checkAds } from './src/server/policies.js'
+import { normalizeAdUrl } from './src/server/policy-match.js'
+import {
+  createBlockedUrl,
+  deleteBlockedUrl,
+  ensureDefaultTenant,
+  findBlockedUrlByNormalized,
+  isPolicyEnabled,
+  listBlockedUrls,
+  listUrlCatchEvents,
+  recordPolicyCatch,
+  recordUrlCatch,
+} from './src/server/tenant.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function catchEvents(entry, now = Date.now()) {
-  const cutoff = now - DAY_MS
-  const stored = Array.isArray(entry.caught_events) ? entry.caught_events : []
-  const recent = stored.filter((event) => {
-    const at = new Date(event?.at).getTime()
-    return Number.isFinite(at) && at >= cutoff
-  })
-  if (recent.length) return recent
-  const legacy = Number(entry.caught_count) || 0
-  if (!legacy) return []
-  const at = entry.updated_at || entry.created_at || new Date(now).toISOString()
-  if (new Date(at).getTime() < cutoff) return []
-  return Array.from({ length: legacy }, () => ({
-    at,
-    page_load_id: 'legacy',
-  }))
-}
-
-function withCatchStats(entry, now = Date.now()) {
-  const events = catchEvents(entry, now)
-  const latest = events[events.length - 1]
+function withCatchStats(entry, events) {
+  const mine = events.filter((event) => event.matchedRuleId === entry.id)
+  const latest = mine[mine.length - 1]
   const pageLoad = latest
-    ? events.filter((event) => event.page_load_id === latest.page_load_id).length
+    ? mine.filter((event) => event.pageLoadId === latest.pageLoadId).length
     : 0
-  const { caught_events, ...rest } = entry
   return {
-    ...rest,
-    caught_24h: events.length,
+    id: entry.id,
+    url: entry.url,
+    created_at: entry.createdAt.toISOString(),
+    updated_at: entry.updatedAt.toISOString(),
+    caught_count: mine.length,
+    caught_24h: mine.length,
     caught_page_load: pageLoad,
   }
 }
@@ -144,7 +83,7 @@ function sendJson(res, status, body) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   res.end(JSON.stringify(body))
 }
@@ -182,20 +121,37 @@ function readBody(req) {
 
 /**
  * Shared blocklist API so any landing page can fetch blocked ad URLs.
- * Persists to data/blocklist.json
+ * Exact URL rules live in PostgreSQL, scoped to the default organization.
+ * data/blocklist.json is no longer written. Import it with npm run db:import.
  */
+function serveCustomerScript(res) {
+  const file = path.resolve(process.cwd(), 'public/a.min.js')
+  if (!fs.existsSync(file)) {
+    res.statusCode = 404
+    res.end('')
+    return
+  }
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+  res.setHeader('Cache-Control', 'public, max-age=300')
+  res.setHeader('X-AdSnitch-Version', '0.3.0')
+  res.end(fs.readFileSync(file))
+}
+
 export function blocklistApiPlugin() {
-  return {
-    name: 'adpage-blocklist-api',
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
+  const middleware = async (req, res, next) => {
         const url = new URL(req.url || '/', 'http://localhost')
+        if (url.pathname === '/a.js') return serveCustomerScript(res)
+
         const isAuth =
           url.pathname.startsWith('/api/login') ||
           url.pathname === '/api/logout' ||
           url.pathname === '/api/session'
         const isBlocklist = url.pathname.startsWith('/api/blocklist')
-        if (!isAuth && !isBlocklist) return next()
+        const isPolicy = url.pathname.startsWith('/api/policies')
+        const isSite =
+          url.pathname.startsWith('/api/sites') || url.pathname.startsWith('/api/site/')
+        if (!isAuth && !isBlocklist && !isPolicy && !isSite) return next()
 
         if (req.method === 'OPTIONS') {
           return sendJson(res, 204, {})
@@ -239,15 +195,54 @@ export function blocklistApiPlugin() {
             return sendJson(res, 200, { ok: true })
           }
 
-          // GET /api/blocklist — public (for embed script on any page)
-          if (req.method === 'GET' && url.pathname === '/api/blocklist') {
-            const entries = readEntries().sort(
-              (a, b) => new Date(b.created_at) - new Date(a.created_at),
+          if (isSite) {
+            const handled = await handleSiteRequest(req, res, url, {
+              sendJson,
+              readBody,
+              readSession,
+              bearerToken,
+            })
+            if (handled) return
+          }
+
+          if (isPolicy) {
+            const handled = await handlePolicyRequest(req, res, url, {
+              sendJson,
+              readBody,
+              readSession,
+              bearerToken,
+            })
+            if (handled) return
+          }
+
+          // POST /api/blocklist/check — public. Match ad URLs against the default policy.
+          // Keywords stay in PostgreSQL. Failures should be treated as allow by the caller.
+          if (req.method === 'POST' && url.pathname === '/api/blocklist/check') {
+            const body = await readBody(req)
+            const tenant = await ensureDefaultTenant()
+            const results = await checkAds(
+              tenant.organizationId,
+              tenant.policyId,
+              body.ads,
             )
-            const now = Date.now()
+            return sendJson(res, 200, { results })
+          }
+
+          // GET /api/blocklist — public exact URLs, still used by the admin list.
+          if (req.method === 'GET' && url.pathname === '/api/blocklist') {
+            const tenant = await ensureDefaultTenant()
+            const live = await isPolicyEnabled(tenant.organizationId, tenant.policyId)
+            if (!live) return sendJson(res, 200, { entries: [], urls: [] })
+            const since = new Date(Date.now() - DAY_MS)
+            const [rows, events] = await Promise.all([
+              listBlockedUrls(tenant.organizationId, tenant.policyId),
+              listUrlCatchEvents(tenant.organizationId, tenant.policyId, since),
+            ])
+            const enabled = rows.filter((row) => row.enabled)
+            const entries = enabled.map((row) => withCatchStats(row, events))
             return sendJson(res, 200, {
-              entries: entries.map((entry) => withCatchStats(entry, now)),
-              urls: entries.map((e) => e.url),
+              entries,
+              urls: entries.map((entry) => entry.url),
             })
           }
 
@@ -263,31 +258,44 @@ export function blocklistApiPlugin() {
               String(body.page_load_id || '')
                 .trim()
                 .slice(0, 80) || crypto.randomUUID()
-            return enqueueStore(() => {
-              const entries = readEntries()
-              const byUrl = new Map(entries.map((entry) => [entry.url, entry]))
-              const nowIso = new Date().toISOString()
-              const cutoff = Date.now() - DAY_MS
-              let changed = false
-              for (const raw of rawUrls) {
-                let normalized
+            const ads = Array.isArray(body.ads)
+              ? body.ads
+              : rawUrls.map((url) => ({ url }))
+            return enqueueStore(async () => {
+              const tenant = await ensureDefaultTenant()
+              const results = await checkAds(
+                tenant.organizationId,
+                tenant.policyId,
+                ads,
+              )
+              for (const match of results) {
+                if (!match.matched) continue
+                let normalized = match.input
                 try {
-                  normalized = normalizeAdUrl(raw)
+                  normalized = normalizeAdUrl(match.input)
                 } catch {
                   continue
                 }
-                const entry = byUrl.get(normalized)
-                if (!entry) continue
-                const events = catchEvents(entry).filter(
-                  (event) => new Date(event.at).getTime() >= cutoff,
-                )
-                events.push({ at: nowIso, page_load_id: pageLoadId })
-                entry.caught_events = events
-                entry.caught_count = (Number(entry.caught_count) || 0) + 1
-                entry.updated_at = nowIso
-                changed = true
+                if (match.ruleType === 'URL') {
+                  await recordUrlCatch({
+                    organizationId: tenant.organizationId,
+                    siteId: tenant.siteId,
+                    policyId: tenant.policyId,
+                    blockedUrlId: match.ruleId,
+                    url: normalized,
+                    pageLoadId,
+                  })
+                  continue
+                }
+                await recordPolicyCatch({
+                  organizationId: tenant.organizationId,
+                  siteId: tenant.siteId,
+                  policyId: tenant.policyId,
+                  match,
+                  url: normalized,
+                  pageLoadId,
+                })
               }
-              if (changed) writeEntries(entries)
               return sendJson(res, 200, { ok: true })
             })
           }
@@ -314,28 +322,42 @@ export function blocklistApiPlugin() {
               })
             }
 
-            const entries = readEntries()
-            const existing = entries.find((e) => e.url === normalized)
+            const tenant = await ensureDefaultTenant()
+            const existing = await findBlockedUrlByNormalized(
+              tenant.organizationId,
+              tenant.policyId,
+              normalized,
+            )
             if (existing) {
               return sendJson(res, 409, {
                 ok: false,
                 error: 'This URL is already on the blocklist.',
                 code: 'DUPLICATE',
-                entry: existing,
+                entry: {
+                  id: existing.id,
+                  url: existing.url,
+                  created_at: existing.createdAt,
+                  updated_at: existing.updatedAt,
+                },
               })
             }
 
-            const now = new Date().toISOString()
-            const entry = {
-              id: crypto.randomUUID(),
-              url: normalized,
-              created_at: now,
-              updated_at: now,
-              caught_count: 0,
-            }
-            entries.push(entry)
-            writeEntries(entries)
-            return sendJson(res, 201, { ok: true, entry })
+            const created = await createBlockedUrl(
+              tenant.organizationId,
+              tenant.policyId,
+              normalized,
+            )
+            return sendJson(res, 201, {
+              ok: true,
+              entry: {
+                id: created.id,
+                url: created.url,
+                created_at: created.createdAt,
+                updated_at: created.updatedAt,
+                caught_count: 0,
+                caught_24h: 0,
+              },
+            })
           }
 
           // DELETE /api/blocklist/:id — admin only
@@ -351,29 +373,46 @@ export function blocklistApiPlugin() {
               })
             }
 
+            const tenant = await ensureDefaultTenant()
             const id = decodeURIComponent(deleteMatch[1])
-            const entries = readEntries()
-            const next = entries.filter((e) => e.id !== id)
-            if (next.length === entries.length) {
+            const removed = await deleteBlockedUrl(
+              tenant.organizationId,
+              tenant.policyId,
+              id,
+            )
+            if (!removed) {
               return sendJson(res, 404, {
                 ok: false,
                 error: 'URL not found.',
                 code: 'NOT_FOUND',
               })
             }
-            writeEntries(next)
             return sendJson(res, 200, { ok: true })
           }
 
           return sendJson(res, 404, { ok: false, error: 'Not found.' })
         } catch (err) {
+          if (err?.code === 'INVALID') {
+            return sendJson(res, 400, { ok: false, error: err.message, code: 'INVALID' })
+          }
+          if (err?.code === 'P2002') {
+            return sendJson(res, 409, { ok: false, error: 'That site already exists.', code: 'DUPLICATE' })
+          }
           console.error('[blocklist-api]', err)
           return sendJson(res, 500, {
             ok: false,
             error: 'Blocklist server error.',
           })
         }
-      })
+  }
+
+  return {
+    name: 'adpage-blocklist-api',
+    configureServer(server) {
+      server.middlewares.use(middleware)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(middleware)
     },
   }
 }

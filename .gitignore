@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
 data/blocklist.json
 
 # Editor directories and files

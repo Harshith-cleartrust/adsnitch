@@ -13,10 +13,11 @@
  *          defer></script>
  *
  * Behavior:
- *   - Fetches blocklist ONCE, checks each slot's data-ad-url
+ *   - One request per scan. The server matches exact URL, domain, keyword, and packs.
+ *   - Keywords stay on the server. This file does not contain the keyword list.
  *   - If blocked → replace slot content with 🤡 You Got Caught (keeps size)
  *   - If API fails → fail open (ads stay visible)
- *   - Does NOT use window.location
+ *   - Does NOT use window.location, the page URL, or the referrer
  */
 ;(function (global) {
   'use strict'
@@ -43,23 +44,6 @@
       if (src) return new URL(src).origin
     } catch (_) {}
     return DEFAULT_API
-  }
-
-  function normalizeAdUrl(raw) {
-    var trimmed = String(raw || '').trim()
-    if (!trimmed) return ''
-    var withProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)
-      ? trimmed
-      : 'https://' + trimmed
-    var parsed = new URL(withProtocol)
-    parsed.hostname = parsed.hostname.toLowerCase()
-    parsed.hash = ''
-    var pathname = parsed.pathname
-    if (pathname.length > 1 && pathname.endsWith('/')) {
-      pathname = pathname.slice(0, -1)
-    }
-    parsed.pathname = pathname || '/'
-    return parsed.toString()
   }
 
   function applyCaughtStyles(slot) {
@@ -109,9 +93,15 @@
       })
   }
 
-  function scan(snapshot) {
+  function slotText(slot) {
+    var explicit = slot.getAttribute('data-ad-text')
+    var text = explicit != null ? explicit : slot.textContent || ''
+    return String(text).replace(/\s+/g, ' ').trim().slice(0, 500)
+  }
+
+  function pendingSlots() {
     var nodes = document.querySelectorAll('[' + ATTR + ']')
-    var caught = []
+    var pending = []
     for (var i = 0; i < nodes.length; i++) {
       var slot = nodes[i]
       if (slot.getAttribute(DONE) === 'true') continue
@@ -120,77 +110,88 @@
         slot.setAttribute(DONE, 'true')
         continue
       }
-      try {
-        var normalized = normalizeAdUrl(adUrl)
-        if (snapshot[normalized]) {
-          if (replaceWithCaught(slot)) caught.push(normalized)
-        } else {
-          slot.setAttribute(DONE, 'true')
-        }
-      } catch (err) {
-        console.error('[adpage-blocker] slot check failed — allowing ad', err)
-        slot.setAttribute(DONE, 'true')
+      pending.push(slot)
+    }
+    return pending
+  }
+
+  function applyResults(batch, results) {
+    var byId = Object.create(null)
+    var list = (results && results.results) || []
+    for (var i = 0; i < list.length; i++) byId[String(list[i].id)] = list[i]
+    var caught = []
+    for (var n = 0; n < batch.length; n++) {
+      var item = batch[n]
+      var match = byId[item.id]
+      if (match && match.matched) {
+        if (replaceWithCaught(item.slot)) caught.push(match.input || item.url)
+      } else {
+        item.slot.setAttribute(DONE, 'true')
       }
     }
     reportCaught(caught)
   }
 
-  function fetchBlocklist() {
-    var url = apiBase() + '/api/blocklist'
-    return fetch(url, { credentials: 'omit' })
+  function scan() {
+    var slots = pendingSlots()
+    if (!slots.length) return Promise.resolve()
+    var batch = slots.map(function (slot, index) {
+      return {
+        id: String(index),
+        slot: slot,
+        url: slot.getAttribute(ATTR),
+        text: slotText(slot),
+      }
+    })
+    return fetch(apiBase() + '/api/blocklist/check', {
+      method: 'POST',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ads: batch.map(function (item) {
+          return { id: item.id, url: item.url, text: item.text }
+        }),
+      }),
+    })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status)
         return res.json()
       })
       .then(function (data) {
-        var map = Object.create(null)
-        var urls = (data && data.urls) || []
-        for (var i = 0; i < urls.length; i++) {
-          try {
-            map[normalizeAdUrl(urls[i])] = true
-          } catch (_) {}
-        }
-        return map
+        applyResults(batch, data)
+      })
+      .catch(function (err) {
+        console.error('[adpage-blocker] policy check unavailable — allowing ads', err)
+        for (var i = 0; i < batch.length; i++) batch[i].slot.setAttribute(DONE, 'true')
       })
   }
 
+  function watch() {
+    if (typeof MutationObserver === 'undefined') return
+    var timer = null
+    var obs = new MutationObserver(function () {
+      clearTimeout(timer)
+      timer = setTimeout(scan, 50)
+    })
+    obs.observe(document.documentElement, { childList: true, subtree: true })
+  }
+
   function boot() {
-    fetchBlocklist()
-      .then(function (snapshot) {
-        scan(snapshot)
-        // Watch for late-injected ad slots
-        if (typeof MutationObserver !== 'undefined') {
-          var timer = null
-          var obs = new MutationObserver(function () {
-            clearTimeout(timer)
-            timer = setTimeout(function () {
-              scan(snapshot)
-            }, 50)
-          })
-          obs.observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-          })
-        }
-        global.AdPageBlocker = {
-          rescan: function () {
-            return fetchBlocklist().then(function (fresh) {
-              // allow re-check of unchecked nodes only; clear DONE to force
-              var nodes = document.querySelectorAll('[' + ATTR + ']')
-              for (var i = 0; i < nodes.length; i++) {
-                if (nodes[i].getAttribute('data-adpage-blocked') !== 'true') {
-                  nodes[i].removeAttribute(DONE)
-                }
-              }
-              scan(fresh)
-            })
-          },
-          apiBase: apiBase(),
-        }
-      })
-      .catch(function (err) {
-        console.error('[adpage-blocker] blocklist unavailable — allowing ads', err)
-      })
+    scan().then(function () {
+      watch()
+      global.AdPageBlocker = {
+        rescan: function () {
+          var nodes = document.querySelectorAll('[' + ATTR + ']')
+          for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].getAttribute('data-adpage-blocked') !== 'true') {
+              nodes[i].removeAttribute(DONE)
+            }
+          }
+          return scan()
+        },
+        apiBase: apiBase(),
+      }
+    })
   }
 
   if (document.readyState === 'loading') {

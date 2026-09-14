@@ -229,13 +229,25 @@ export async function deleteBlocklistedUrl(id) {
   }
 }
 
-export async function getBlocklistSnapshot() {
+export async function getBlocklistSnapshot(ads = []) {
   try {
-    const res = await fetch(`${apiBase()}/api/blocklist`)
+    const res = await fetch(`${apiBase()}/api/blocklist/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ads: ads.map((ad) => ({
+          url: ad.adUrl || ad.url,
+          text: ad.text || ad.headline || '',
+        })),
+      }),
+    })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
-    const urls = Array.isArray(data.urls) ? data.urls : []
-    return new Set(urls)
+    const blocked = new Set()
+    for (const row of data.results || []) {
+      if (row.matched) blocked.add(row.input)
+    }
+    return blocked
   } catch (err) {
     console.error('[blocklist] Snapshot failed — allowing ads', err)
     return new Set()
@@ -245,6 +257,7 @@ export async function getBlocklistSnapshot() {
 export function isAdUrlInSnapshot(adUrl, snapshot) {
   try {
     if (!adUrl || !snapshot) return false
+    if (snapshot.has(adUrl)) return true
     const validation = validateAdUrl(adUrl)
     if (!validation.ok) return false
     return snapshot.has(validation.url)
