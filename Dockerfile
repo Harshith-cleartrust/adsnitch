@@ -16,7 +16,10 @@ RUN npm ci
 
 COPY . .
 
-RUN npx prisma generate \
+# Prisma requires DATABASE_URL to exist while generating the client.
+# Use a throwaway URL at build time only; Railway must set the real URL at runtime.
+RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public" \
+  npx prisma generate \
   && npm run build
 
 ENV NODE_ENV=production
@@ -24,4 +27,5 @@ ENV NODE_ENV=production
 # Railway sets PORT. Local default matches Vite preview.
 EXPOSE 4173
 
+# Runtime DATABASE_URL must point at Railway Postgres (not localhost).
 CMD ["sh", "-c", "npx prisma migrate deploy && npx vite preview --host 0.0.0.0 --port ${PORT:-4173}"]
