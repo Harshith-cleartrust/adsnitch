@@ -41,7 +41,7 @@ Open http://localhost:5173/
 ```
 
 The script fetches `/api/blocklist` **once**, then checks each slot’s `data-ad-url`.
-Blocked slots show 🤡 **You Got Caught**. If the API is down, ads keep showing (fail open).
+Blocked slots show a landscape placeholder image. If the API is down, ads keep showing (fail open).
 
 ## API
 

@@ -98,19 +98,17 @@ export default function DemoPage() {
           src="/adsnitch-logo.png"
           alt="AdSnitch, a Cleartrust product"
         />
-        <h1>See a sus ad? Snitch on it.</h1>
-        <p className="demo__kicker">Ad slots demo</p>
+        <h1>AdSnitch</h1>
+        <p className="demo__kicker">Live slot demo</p>
         <p className="demo__sub">
-          Each slot checks its own ad URL. Blocklisted ads are replaced in-place
-          with “You Got Caught”.
+          Each slot is checked by its own ad URL. Matched creatives are replaced
+          in place — the rest of the page stays intact.
         </p>
         <p className="demo__hint">
-          Manage the list on{' '}
-          <Link to="/admin/blocklist">Ad URL Blocklist</Link>. Also works on{' '}
-          <a href="/sample-landing.html" target="_blank" rel="noreferrer">
-            any landing page
-          </a>{' '}
-          via <code>adpage-blocker.js</code>.
+          Manage rules in the{' '}
+          <Link to="/admin/blocklist">workspace</Link>. For production pages, install
+          the customer script from{' '}
+          <Link to="/admin/sites">Install</Link>.
         </p>
       </header>
 

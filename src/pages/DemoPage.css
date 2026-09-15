@@ -5,58 +5,59 @@
 }
 
 .demo__hero {
-  margin-bottom: 1.4rem;
-  padding: 1.7rem 1.5rem 1.5rem;
+  margin-bottom: 1.25rem;
+  padding: 1.5rem 1.4rem 1.35rem;
   border-radius: var(--radius);
   color: #f4f8ff;
   background:
-    radial-gradient(380px 180px at 90% 0%, rgba(28, 141, 255, 0.42), transparent 62%),
-    radial-gradient(120px 80px at 12% 8%, rgba(255, 75, 58, 0.28), transparent 70%),
+    radial-gradient(420px 200px at 92% 0%, rgba(26, 134, 240, 0.38), transparent 60%),
     linear-gradient(155deg, #05080e 0%, #0b2a55 100%);
   box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .demo__logo {
   display: block;
-  height: 96px;
+  height: 78px;
   width: auto;
-  max-width: min(300px, 100%);
+  max-width: min(250px, 100%);
   margin: 0 0 0.85rem;
   object-fit: contain;
   background: #fff;
-  border-radius: 16px;
-  padding: 6px 10px;
+  border-radius: 12px;
+  padding: 5px 9px;
 }
 
 .demo__hero h1 {
   margin: 0.15rem 0 0.35rem;
   font-family: var(--font-display);
-  font-size: clamp(1.35rem, 3vw, 1.85rem);
-  font-weight: 560;
-  letter-spacing: -0.03em;
-  color: var(--gold);
+  font-size: clamp(1.55rem, 3vw, 2.1rem);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  color: #fff;
 }
 
 .demo__kicker {
   margin: 0 0 0.55rem;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(180, 214, 255, 0.75);
+  color: rgba(180, 214, 255, 0.8);
 }
 
 .demo__sub {
   margin: 0 0 0.7rem;
-  max-width: 36rem;
+  max-width: 38rem;
   color: rgba(214, 230, 255, 0.86);
   line-height: 1.55;
+  font-size: 0.95rem;
 }
 
 .demo__hint {
   margin: 0;
-  font-size: 0.92rem;
-  color: rgba(214, 230, 255, 0.68);
+  font-size: 0.9rem;
+  color: rgba(214, 230, 255, 0.7);
   line-height: 1.55;
 }
 
@@ -74,10 +75,10 @@
 }
 
 .demo__stage {
-  padding: 1.15rem;
-  border-radius: 24px;
-  background: rgba(255, 252, 247, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  padding: 1.1rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
 }
 

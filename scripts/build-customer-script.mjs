@@ -14,7 +14,7 @@ const result = await esbuild.transform(source, {
   target: 'es2018',
 })
 
-const banner = '/* AdSnitch script version: 0.3.0 */\n'
+const banner = '/* AdSnitch script version: 0.3.1 */\n'
 const minified = banner + result.code
 fs.writeFileSync(outPath, minified)
 

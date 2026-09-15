@@ -15,7 +15,7 @@
  * Behavior:
  *   - One request per scan. The server matches exact URL, domain, keyword, and packs.
  *   - Keywords stay on the server. This file does not contain the keyword list.
- *   - If blocked → replace slot content with 🤡 You Got Caught (keeps size)
+ *   - If blocked → replace slot with a landscape placeholder image (keeps size)
  *   - If API fails → fail open (ads stay visible)
  *   - Does NOT use window.location, the page URL, or the referrer
  */
@@ -25,6 +25,16 @@
   var ATTR = 'data-ad-url'
   var DONE = 'data-adpage-checked'
   var DEFAULT_API = 'http://localhost:5173'
+  var PLACEHOLDERS = [
+    '/placeholders/landscape-01.png',
+    '/placeholders/landscape-02.png',
+    '/placeholders/landscape-03.png',
+    '/placeholders/landscape-04.png',
+    '/placeholders/landscape-05.png',
+    '/placeholders/landscape-06.png',
+    '/placeholders/landscape-07.png',
+    '/placeholders/landscape-08.png',
+  ]
   var pageLoadId =
     global.crypto && global.crypto.randomUUID
       ? global.crypto.randomUUID()
@@ -46,31 +56,29 @@
     return DEFAULT_API
   }
 
-  function applyCaughtStyles(slot) {
-    slot.style.display = slot.style.display || 'flex'
-    slot.style.alignItems = 'center'
-    slot.style.justifyContent = 'center'
-    slot.style.boxSizing = 'border-box'
-    slot.style.overflow = 'hidden'
-    slot.style.borderRadius = slot.style.borderRadius || '16px'
-    slot.style.background =
-      'radial-gradient(180px 120px at 50% 12%, rgba(28,141,255,0.28), transparent 70%), linear-gradient(165deg, #05080e 0%, #0b2a55 100%)'
-    slot.style.color = '#f4f8ff'
-    slot.style.textAlign = 'center'
-    slot.style.fontFamily = 'Georgia, "Times New Roman", serif'
-    slot.style.boxShadow = '0 12px 28px rgba(23, 20, 28, 0.18)'
+  function pickPlaceholder(seed) {
+    var hash = 0
+    var text = String(seed || '')
+    for (var i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) >>> 0
+    if (!text) hash = Math.floor(Math.random() * PLACEHOLDERS.length)
+    return PLACEHOLDERS[hash % PLACEHOLDERS.length]
   }
 
   function replaceWithCaught(slot) {
     if (slot.getAttribute('data-adpage-blocked') === 'true') return false
-    applyCaughtStyles(slot)
+    var src = apiBase() + pickPlaceholder(slot.getAttribute(ATTR) || '')
+    slot.style.display = slot.style.display || 'block'
+    slot.style.boxSizing = 'border-box'
+    slot.style.overflow = 'hidden'
+    slot.style.padding = '0'
+    slot.style.borderRadius = slot.style.borderRadius || '16px'
+    slot.style.background = '#0b1a2c'
     slot.setAttribute('data-adpage-blocked', 'true')
     slot.setAttribute(DONE, 'true')
     slot.innerHTML =
-      '<div style="padding:1rem;line-height:1.25">' +
-      '<div style="font-size:2.6rem;line-height:1" aria-hidden="true">🤡</div>' +
-      '<div style="margin-top:0.4rem;font-size:1.15rem;font-weight:600;letter-spacing:-0.02em">You Got Caught</div>' +
-      '</div>'
+      '<img src="' +
+      src +
+      '" alt="" style="display:block;width:100%;height:100%;object-fit:cover;object-position:center;" />'
     return true
   }
 

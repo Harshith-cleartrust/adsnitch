@@ -10,6 +10,7 @@ import {
   createPolicy,
   getPolicy,
   listPolicies,
+  listPolicyPackKeywords,
   previewPolicyMatch,
   setPolicyCategory,
   updatePolicy,
@@ -23,20 +24,22 @@ function languageLabel(code) {
   return code
 }
 
-function PackKeywords({ pack, busy, onDelete }) {
+function PackKeywords({ pack, keywords, loading, busy, onDelete }) {
   if (!pack) return null
-  const keywords = pack.keywords || []
+  const rows = keywords || []
   return (
     <div className="pack-keywords">
       <div className="admin__list-head">
         <h3>{pack.name} keywords</h3>
-        <span className="count">{keywords.length}</span>
+        <span className="count">{pack.keyword_count || rows.length}</span>
       </div>
-      {keywords.length === 0 ? (
+      {loading ? (
+        <p className="empty">Loading keywords…</p>
+      ) : rows.length === 0 ? (
         <p className="empty">No keywords in this pack yet.</p>
       ) : (
         <ul className="rule-list">
-          {keywords.map((row) => (
+          {rows.map((row) => (
             <li key={row.id}>
               <span>
                 <code>{row.keyword}</code> · {languageLabel(row.language)}
@@ -70,6 +73,8 @@ export default function PolicyPage() {
   const [packLanguage, setPackLanguage] = useState('en')
   const [packId, setPackId] = useState('GAMBLING')
   const [openPack, setOpenPack] = useState(null)
+  const [packKeywords, setPackKeywords] = useState([])
+  const [packKeywordsLoading, setPackKeywordsLoading] = useState(false)
   const [sampleUrl, setSampleUrl] = useState('')
   const [sampleText, setSampleText] = useState('')
   const [preview, setPreview] = useState('')
@@ -97,7 +102,22 @@ export default function PolicyPage() {
     setPolicy(detail.policy)
     setName(detail.policy.name)
     setDescription(detail.policy.description || '')
+    setOpenPack(null)
+    setPackKeywords([])
     setMode('edit')
+  }
+
+  const loadPackKeywords = async (category) => {
+    if (!policy?.id || !category) return
+    setPackKeywordsLoading(true)
+    const result = await listPolicyPackKeywords(policy.id, category)
+    setPackKeywordsLoading(false)
+    if (!result.ok) {
+      showMessage('error', result.error)
+      setPackKeywords([])
+      return
+    }
+    setPackKeywords(result.keywords || [])
   }
 
   useEffect(() => {
@@ -127,6 +147,7 @@ export default function PolicyPage() {
       return
     }
     if (policy?.id) await reload()
+    if (openPack) await loadPackKeywords(openPack)
     if (onOk) onOk(result.ok ? result : { ...result, code: 'DUPLICATE' })
   }
 
@@ -164,11 +185,11 @@ export default function PolicyPage() {
       <header className="admin__header">
         <div>
           <p className="eyebrow">Ad quality</p>
-          <h1>Policy</h1>
-          <p className="tagline">See a sus ad? Snitch on it.</p>
+          <h1>Policies</h1>
+          <p className="tagline">Ad quality control for every page</p>
           <p className="lede">
-            Signed in as <strong>{username || 'admin'}</strong>. Rules match the
-            advertisement URL and optional ad text, not the visitor page.
+            Signed in as <strong>{username || 'admin'}</strong>. Rules evaluate the
+            advertisement URL and optional ad text — never the visitor’s page URL.
           </p>
         </div>
       </header>
@@ -367,9 +388,9 @@ export default function PolicyPage() {
         </section>
 
         <section className="panel">
-          <h2>Check an ad</h2>
+          <h2>Preview a match</h2>
           <p className="lede" style={{ color: 'var(--muted)' }}>
-            Uses the same rules as the live embed: exact URL, domain, keyword, then category pack.
+            Uses production matching order: exact URL, domain, custom keyword, then enabled category packs.
           </p>
           <form
             className="admin__row"
@@ -412,7 +433,7 @@ export default function PolicyPage() {
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>Category packs</h2>
         <p className="lede" style={{ color: 'var(--muted)' }}>
-          Gambling starts enabled on the default policy. The other packs stay off until you enable them.
+          Gambling is enabled by default on the starter policy. Each pack includes 200+ keywords. Enable other packs as needed for your markets.
         </p>
         <form
           className="admin__row"
@@ -467,7 +488,12 @@ export default function PolicyPage() {
                 type="button"
                 className="pack-card__open"
                 onClick={() => {
-                  setOpenPack((current) => (current === pack.category ? null : pack.category))
+                  setOpenPack((current) => {
+                    const next = current === pack.category ? null : pack.category
+                    if (next) loadPackKeywords(next)
+                    else setPackKeywords([])
+                    return next
+                  })
                   setPackId(pack.category)
                 }}
               >
@@ -503,9 +529,12 @@ export default function PolicyPage() {
         {openPack && (
           <PackKeywords
             pack={policy.categories.find((row) => row.category === openPack)}
+            keywords={packKeywords}
+            loading={packKeywordsLoading}
             busy={busy}
             onDelete={(id) =>
               run(() => deletePolicyKeyword(policy.id, id), () => {
+                setPackKeywords((rows) => rows.filter((row) => row.id !== id))
                 showMessage('success', 'Keyword removed.')
               })
             }

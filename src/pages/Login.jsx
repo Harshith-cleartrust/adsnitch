@@ -68,16 +68,21 @@ export default function Login() {
           src="/adsnitch-logo-dark.png?v=2"
           alt="AdSnitch, a Cleartrust product"
         />
-        <h2>See a sus ad? Snitch on it.</h2>
-        <p>Block the bad. Keep the page.</p>
-        <p>Target unwanted ads by URL — without blocking the page itself.</p>
+        <p className="login__brand">AdSnitch</p>
+        <h2>Ad quality control for every page.</h2>
+        <p>Block unwanted ads by their creative URL. Leave the rest of the page untouched.</p>
+        <ul>
+          <li>Exact URL, domain, and keyword policies</li>
+          <li>Category packs for common risk areas</li>
+          <li>One lightweight script for every site</li>
+        </ul>
       </aside>
 
       <form className="login__card" onSubmit={handleSubmit}>
-        <p className="eyebrow">Admin</p>
+        <p className="eyebrow">Secure access</p>
         <h1>Sign in</h1>
         <p className="login__lede">
-          Only signed-in admins can add or delete blocklisted ad URLs.
+          Access your organization workspace to manage policies, blocklists, and install scripts.
         </p>
 
         <label htmlFor="username">Username</label>

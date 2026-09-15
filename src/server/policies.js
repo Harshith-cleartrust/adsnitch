@@ -2,7 +2,7 @@ import { canRead, canWrite, sameOrganization } from './access.js'
 import { prisma } from './db.js'
 import { evaluateAds, matchAd, normalizeAdUrl, normalizeDomain } from './policy-match.js'
 import { POLICY_PACKS, keywordsForPack, packById } from './policy-packs.js'
-import { ensureDefaultTenant } from './tenant.js'
+import { ensureDefaultTenant, ensurePolicyPackKeywords, seedPolicyPackKeywords } from './tenant.js'
 
 export const DEMO_ADMIN_USERNAME = 'admin'
 export const DEMO_ADMIN_EMAIL = 'admin@adsnitch.local'
@@ -56,7 +56,7 @@ export function deny(actor, organizationId, write) {
   return null
 }
 
-function serializePolicy(policy, rules) {
+function serializePolicy(policy, rules, packCounts = {}) {
   return {
     id: policy.id,
     organization_id: policy.organizationId,
@@ -76,14 +76,9 @@ function serializePolicy(policy, rules) {
         name: pack.name,
         populated: pack.populated,
         enabled: Boolean(saved?.enabled),
-        keyword_count: rules.keywords.filter((row) => row.category === pack.id).length,
-        keywords: rules.keywords
-          .filter((row) => row.category === pack.id)
-          .map((row) => ({
-            id: row.id,
-            keyword: row.keyword,
-            language: row.language,
-          })),
+        keyword_count: packCounts[pack.id] ?? 0,
+        // Pack keyword rows are loaded on demand (200+ each).
+        keywords: [],
       }
     }),
   }
@@ -114,6 +109,47 @@ async function loadRules(organizationId, policyId) {
   return { policy, urls, domains, keywords, categories }
 }
 
+/** Admin editor payload: skip shipping thousands of pack keywords. */
+async function loadPolicyEditor(organizationId, policyId) {
+  const policy = await prisma.policy.findFirst({
+    where: { id: policyId, organizationId },
+  })
+  if (!policy) return null
+  const [urls, domains, customKeywords, categories, packCountRows] = await Promise.all([
+    prisma.blockedUrl.findMany({
+      where: { policyId, policy: { organizationId } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.blockedDomain.findMany({
+      where: { policyId, policy: { organizationId } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.blockedKeyword.findMany({
+      where: { policyId, policy: { organizationId }, category: null },
+      orderBy: { keyword: 'asc' },
+    }),
+    prisma.policyCategory.findMany({
+      where: { policyId, policy: { organizationId } },
+    }),
+    prisma.blockedKeyword.groupBy({
+      by: ['category'],
+      where: { policyId, policy: { organizationId }, category: { not: null } },
+      _count: { _all: true },
+    }),
+  ])
+  const packCounts = Object.fromEntries(
+    packCountRows.map((row) => [row.category, row._count._all]),
+  )
+  return {
+    policy,
+    urls,
+    domains,
+    keywords: customKeywords,
+    categories,
+    packCounts,
+  }
+}
+
 export async function listPolicies(organizationId) {
   const rows = await prisma.policy.findMany({
     where: { organizationId },
@@ -131,9 +167,30 @@ export async function listPolicies(organizationId) {
 }
 
 export async function getPolicy(organizationId, policyId) {
-  const loaded = await loadRules(organizationId, policyId)
+  await ensurePolicyPackKeywords(policyId)
+  const loaded = await loadPolicyEditor(organizationId, policyId)
   if (!loaded) return null
-  return serializePolicy(loaded.policy, loaded)
+  return serializePolicy(loaded.policy, loaded, loaded.packCounts)
+}
+
+export async function listCategoryKeywords(organizationId, policyId, category) {
+  const pack = packById(category)
+  if (!pack) {
+    const error = new Error('Unknown policy pack.')
+    error.code = 'INVALID'
+    throw error
+  }
+  const policy = await prisma.policy.findFirst({
+    where: { id: policyId, organizationId },
+    select: { id: true },
+  })
+  if (!policy) return null
+  const rows = await prisma.blockedKeyword.findMany({
+    where: { policyId, category: pack.id, policy: { organizationId } },
+    orderBy: [{ language: 'asc' }, { keyword: 'asc' }],
+    select: { id: true, keyword: true, language: true },
+  })
+  return { category: pack.id, name: pack.name, keywords: rows }
 }
 
 export async function createPolicy(organizationId, input) {
@@ -157,6 +214,7 @@ export async function createPolicy(organizationId, input) {
       },
     },
   })
+  await seedPolicyPackKeywords(policy.id)
   return getPolicy(organizationId, policy.id)
 }
 
@@ -281,25 +339,17 @@ export async function setCategoryEnabled(organizationId, policyId, category, ena
   })
 
   if (enabled && pack.populated) {
-    for (const row of keywordsForPack(pack.id)) {
-      await prisma.blockedKeyword.upsert({
-        where: {
-          policyId_keyword_language: {
-            policyId,
-            keyword: row.keyword,
-            language: row.language,
-          },
-        },
-        update: { enabled: true, category: pack.id },
-        create: {
-          policyId,
-          keyword: row.keyword,
-          language: row.language,
-          category: pack.id,
-          enabled: true,
-        },
-      })
-    }
+    const rows = keywordsForPack(pack.id)
+    await prisma.blockedKeyword.createMany({
+      data: rows.map((row) => ({
+        policyId,
+        keyword: row.keyword,
+        language: row.language,
+        category: pack.id,
+        enabled: true,
+      })),
+      skipDuplicates: true,
+    })
   }
   await prisma.blockedKeyword.updateMany({
     where: { policyId, category: pack.id },

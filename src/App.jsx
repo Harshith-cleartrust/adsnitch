@@ -76,7 +76,7 @@ export default function App() {
           />
           <span className="topnav__identity">
             <span className="topnav__name">AdSnitch</span>
-            <span className="topnav__tagline">See a sus ad? Snitch on it.</span>
+            <span className="topnav__tagline">Ad quality control for every page</span>
           </span>
         </NavLink>
         <div className="topnav__links">
@@ -86,13 +86,13 @@ export default function App() {
               isActive ? 'topnav__link is-active' : 'topnav__link'
             }
           >
-            Ad slots
+            Demo
           </NavLink>
           {authed ? (
             <>
               <span className="user-pill">{username || 'admin'}</span>
               <button type="button" className="topnav__link topnav__button" onClick={handleLogout}>
-                Log out
+                Sign out
               </button>
             </>
           ) : (
@@ -102,7 +102,7 @@ export default function App() {
                 isActive ? 'topnav__link is-active' : 'topnav__link'
               }
             >
-              Login
+              Sign in
             </NavLink>
           )}
         </div>

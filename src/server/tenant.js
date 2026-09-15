@@ -73,6 +73,7 @@ export async function ensureDefaultTenant() {
 /**
  * Default policy starts with Gambling on and every other pack off.
  * Does not re-enable a pack an admin has turned off.
+ * Inserts any missing pack keywords (skipDuplicates) so packs stay fully populated.
  */
 export async function seedDefaultPolicyPacks(policyId) {
   await prisma.policyCategory.createMany({
@@ -84,24 +85,62 @@ export async function seedDefaultPolicyPacks(policyId) {
     skipDuplicates: true,
   })
 
-  for (const pack of POLICY_PACKS) {
-    const rows = keywordsForPack(pack.id)
-    if (!rows.length) continue
-    const category = await prisma.policyCategory.findUnique({
-      where: { policyId_category: { policyId, category: pack.id } },
-      select: { enabled: true },
-    })
-    await prisma.blockedKeyword.createMany({
-      data: rows.map((row) => ({
-        policyId,
-        keyword: row.keyword,
-        language: row.language,
-        category: row.category,
-        enabled: Boolean(category?.enabled),
-      })),
-      skipDuplicates: true,
-    })
-  }
+  await seedPolicyPackKeywords(policyId)
+}
+
+/**
+ * Ensure every category pack on a policy has the full keyword list.
+ * New keywords are inserted; existing rows are left unchanged (including enabled).
+ */
+export async function seedPolicyPackKeywords(policyId) {
+  await prisma.policyCategory.createMany({
+    data: POLICY_PACKS.map((pack) => ({
+      policyId,
+      category: pack.id,
+      enabled: false,
+    })),
+    skipDuplicates: true,
+  })
+
+  const categories = await prisma.policyCategory.findMany({
+    where: { policyId },
+    select: { category: true, enabled: true },
+  })
+  const enabledByCategory = new Map(categories.map((row) => [row.category, row.enabled]))
+
+  await Promise.all(
+    POLICY_PACKS.map(async (pack) => {
+      const rows = keywordsForPack(pack.id)
+      if (!rows.length) return
+      const enabled = Boolean(enabledByCategory.get(pack.id))
+      await prisma.blockedKeyword.createMany({
+        data: rows.map((row) => ({
+          policyId,
+          keyword: row.keyword,
+          language: row.language,
+          category: row.category,
+          enabled,
+        })),
+        skipDuplicates: true,
+      })
+    }),
+  )
+}
+
+/**
+ * Backfill pack keywords when a policy is missing the current list size.
+ */
+export async function ensurePolicyPackKeywords(policyId) {
+  const expected = POLICY_PACKS.reduce(
+    (sum, pack) => sum + keywordsForPack(pack.id).length,
+    0,
+  )
+  const count = await prisma.blockedKeyword.count({
+    where: { policyId, category: { not: null } },
+  })
+  if (count >= expected) return false
+  await seedPolicyPackKeywords(policyId)
+  return true
 }
 
 export async function isPolicyEnabled(organizationId, policyId) {

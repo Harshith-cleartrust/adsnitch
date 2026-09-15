@@ -3,24 +3,24 @@
 }
 
 .workspace {
-  width: min(1180px, calc(100% - 2rem));
-  margin: 0.85rem auto 2rem;
+  width: min(1280px, calc(100% - 2rem));
+  margin: 1rem auto 2.5rem;
 }
 
 .workspace__body {
-  margin-top: 1.35rem;
+  margin-top: 1.15rem;
 }
 
 .workspace--split {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
+  grid-template-columns: 196px minmax(0, 1fr);
   gap: 1.15rem;
   align-items: start;
 }
 
 .app-body {
   min-width: 0;
-  margin-top: 0.35rem;
+  margin-top: 0;
 }
 
 .app-body > main {
@@ -38,23 +38,25 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.85rem 1.25rem;
+  gap: 0.75rem 1.1rem;
   margin: 0;
   width: 100%;
-  padding: 0.55rem 0.65rem 0.55rem 0.85rem;
+  padding: 0.5rem 0.55rem 0.5rem 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  background: rgba(7, 17, 31, 0.94);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(12, 28, 52, 0.98), rgba(7, 17, 31, 0.98));
   color: #f4f8ff;
-  box-shadow: 0 16px 40px rgba(7, 17, 31, 0.22);
+  box-shadow: 0 14px 36px rgba(7, 17, 31, 0.2);
   position: relative;
   z-index: 1;
+  backdrop-filter: blur(10px);
 }
 
 .topnav__brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.7rem;
   color: #fff;
   text-decoration: none;
   min-width: 0;
@@ -62,10 +64,10 @@
 
 .brand-mark {
   display: block;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   flex-shrink: 0;
 }
@@ -79,9 +81,9 @@
 
 .topnav__name {
   font-family: var(--font-display);
-  font-weight: 680;
-  font-size: 1.05rem;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: -0.04em;
 }
 
 .topnav__tagline {
@@ -91,22 +93,21 @@
   color: #8ec8ff;
 }
 
-
 .topnav__links {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
 }
 
 .topnav__link {
   text-decoration: none;
   color: rgba(232, 242, 255, 0.72);
-  font-size: 0.88rem;
-  font-weight: 600;
-  padding: 0.48rem 0.8rem;
-  border-radius: 999px;
-  transition: color 0.2s ease, background 0.2s ease;
+  font-size: 0.86rem;
+  font-weight: 650;
+  padding: 0.46rem 0.78rem;
+  border-radius: 10px;
+  transition: color 0.18s ease, background 0.18s ease;
 }
 
 .topnav__link:hover {
@@ -116,7 +117,7 @@
 
 .topnav__link.is-active {
   color: #fff;
-  background: linear-gradient(180deg, #3aa4ff, #1c8dff);
+  background: linear-gradient(180deg, #3aa4ff, #1a86f0);
 }
 
 .topnav__button {
@@ -126,19 +127,19 @@
 }
 
 .user-pill {
-  margin-left: 0.25rem;
-  padding: 0.4rem 0.7rem;
+  margin-left: 0.2rem;
+  padding: 0.38rem 0.65rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: #8ec8ff;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 @media (max-width: 720px) {
   .topnav {
-    border-radius: 22px;
+    border-radius: 14px;
   }
 
   .topnav__tagline,

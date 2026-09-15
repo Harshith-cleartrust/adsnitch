@@ -2,16 +2,16 @@ import { NavLink } from 'react-router-dom'
 import './SideNav.css'
 
 const LINKS = [
-  { to: '/admin/blocklist', label: 'Home', end: true },
+  { to: '/admin/blocklist', label: 'Overview', end: true },
   { to: '/blocklist', label: 'Blocklist', end: true },
-  { to: '/admin/policy', label: 'Policy', end: true },
-  { to: '/admin/sites', label: 'Script', end: true },
+  { to: '/admin/policy', label: 'Policies', end: true },
+  { to: '/admin/sites', label: 'Install', end: true },
 ]
 
 export default function SideNav() {
   return (
-    <aside className="sidenav" aria-label="Pages">
-      <p className="sidenav__label">Menu</p>
+    <aside className="sidenav" aria-label="Workspace">
+      <p className="sidenav__label">Workspace</p>
       <nav>
         {LINKS.map((link) => (
           <NavLink

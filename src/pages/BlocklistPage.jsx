@@ -109,12 +109,11 @@ export default function BlocklistPage() {
 
       <header className="admin__header">
         <div>
-          <p className="eyebrow">AdSnitch</p>
+          <p className="eyebrow">Blocklist</p>
           <h1>Blocked URLs</h1>
-          <p className="tagline">See a sus ad? Snitch on it.</p>
+          <p className="tagline">Ad quality control for every page</p>
           <p className="lede">
-            Search the blocklist. Each page shows up to 10 URLs. Counts update
-            without a reload.
+            Search and manage exact URL rules. Counts refresh live as catches are reported.
           </p>
         </div>
       </header>

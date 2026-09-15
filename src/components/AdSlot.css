@@ -7,7 +7,7 @@
   overflow: hidden;
   flex-shrink: 0;
   border: 1px solid rgba(23, 20, 28, 0.08);
-  border-radius: 18px;
+  border-radius: 14px;
   background: #fff;
   box-shadow: 0 12px 28px rgba(23, 20, 28, 0.08);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -19,10 +19,9 @@
 }
 
 .ad-slot--blocked {
-  background:
-    radial-gradient(180px 120px at 50% 12%, rgba(28, 141, 255, 0.28), transparent 70%),
-    linear-gradient(165deg, #05080e 0%, #0b2a55 100%);
-  border-color: rgba(126, 200, 255, 0.28);
+  padding: 0;
+  background: #0b1a2c;
+  border-color: rgba(11, 26, 44, 0.35);
   color: #f4f8ff;
 }
 
@@ -37,6 +36,7 @@
   position: absolute;
   top: 10px;
   left: 10px;
+  z-index: 1;
   padding: 0.18rem 0.45rem;
   border-radius: 999px;
   font-size: 0.62rem;
@@ -45,11 +45,6 @@
   text-transform: uppercase;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.72);
-}
-
-.ad-slot--blocked .ad-slot__badge {
-  color: #8ec8ff;
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .ad-slot__content {
@@ -66,7 +61,7 @@
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.15rem;
-  font-weight: 560;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--ink);
 }
@@ -83,30 +78,13 @@
   text-decoration: underline;
 }
 
-.ad-slot__caught {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 1rem;
-  text-align: center;
-  animation: caught-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.ad-slot__emoji {
-  font-size: 2.6rem;
-  line-height: 1;
+.ad-slot__placeholder {
   display: block;
-  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
-}
-
-.ad-slot__caught-text {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 560;
-  letter-spacing: -0.02em;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  animation: ad-fade-in 0.45s ease both;
 }
 
 @keyframes ad-fade-in {
@@ -117,16 +95,5 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes caught-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.88);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }

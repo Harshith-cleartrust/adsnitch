@@ -7,6 +7,7 @@ import {
   deletePolicy,
   deny,
   getPolicy,
+  listCategoryKeywords,
   listPolicies,
   previewMatch,
   resolveActor,
@@ -191,6 +192,17 @@ export async function handlePolicyRequest(req, res, url, { sendJson, readBody, r
         return true
       }
       return sendJson(res, 200, { ok: true }) || true
+    }
+
+    if (req.method === 'GET' && section === 'categories' && ruleId) {
+      const blocked = deny(actor, actor.organizationId, false)
+      if (blocked) return sendJson(res, blocked.status, { ok: false, ...blocked }) || true
+      const detail = await listCategoryKeywords(actor.organizationId, policyId, ruleId)
+      if (!detail) {
+        sendJson(res, 404, { ok: false, error: 'Policy not found.', code: 'NOT_FOUND' })
+        return true
+      }
+      return sendJson(res, 200, { ok: true, ...detail }) || true
     }
 
     if ((req.method === 'PATCH' || req.method === 'PUT') && section === 'categories' && ruleId) {

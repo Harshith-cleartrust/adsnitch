@@ -110,12 +110,12 @@ export default function AdminBlocklist() {
             src="/adsnitch-logo.png"
             alt="AdSnitch, a Cleartrust product"
           />
-          <h1>Ad URL Blocklist</h1>
-          <p className="tagline">See a sus ad? Snitch on it.</p>
+          <h1>Overview</h1>
+          <p className="tagline">Ad quality control for every page</p>
           <p className="lede">
-            Signed in as <strong>{username || 'admin'}</strong>. Block ads by
-            their ad URL. Install the customer script from Sites. Do not paste a
-            localhost script onto an HTTPS page.
+            Signed in as <strong>{username || 'admin'}</strong>. Add exact ad URLs to block,
+            then install the customer script from Install. Use an HTTPS host in production —
+            never a localhost script on an HTTPS page.
           </p>
         </div>
       </header>
@@ -249,18 +249,18 @@ export default function AdminBlocklist() {
 
       <section className="embed panel" aria-labelledby="embed-heading">
         <div className="admin__list-head">
-          <h2 id="embed-heading">Use on any landing page</h2>
+          <h2 id="embed-heading">Deploy on any landing page</h2>
         </div>
         <p className="embed__lede">
-          Mark each slot with <code>data-ad-url</code>, then copy the minimized
-          script from Sites. Do not install a localhost script on an HTTPS page.
+          Mark each ad slot with <code>data-ad-url</code>, then copy the minimized
+          install script. Production pages must load the script over HTTPS.
           Local sample:{' '}
           <a href="/sample-landing.html" target="_blank" rel="noreferrer">
             /sample-landing.html
           </a>
         </p>
         <a className="btn-primary" href="/admin/sites" style={{ display: 'inline-block', textDecoration: 'none' }}>
-          Open Sites
+          Open Install
         </a>
       </section>
     </div>

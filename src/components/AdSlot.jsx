@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { pickBlockedPlaceholder } from '../blocked-placeholders'
 import { isAdUrlInSnapshot, reportCaughtUrls } from '../services/blocklist'
 import './AdSlot.css'
 
@@ -6,7 +7,7 @@ const reportedCatches = new Set()
 
 /**
  * Renders one ad slot. Checks the AD URL (not window.location).
- * If blocked → placeholder in the same slot; else → normal ad content.
+ * If blocked → landscape placeholder in the same slot; else → normal ad content.
  */
 export default function AdSlot({
   label,
@@ -19,6 +20,10 @@ export default function AdSlot({
 }) {
   const blocked = isAdUrlInSnapshot(adUrl, blocklistSnapshot)
   const catchKey = slotId || `${label}:${adUrl}`
+  const placeholderSrc = useMemo(
+    () => pickBlockedPlaceholder(adUrl || catchKey),
+    [adUrl, catchKey],
+  )
 
   useEffect(() => {
     if (!blocked || !adUrl) return undefined
@@ -40,15 +45,16 @@ export default function AdSlot({
       data-blocked={blocked ? 'true' : 'false'}
       aria-label={blocked ? 'Blocked advertisement' : `Advertisement: ${label}`}
     >
-      <span className="ad-slot__badge">{label}</span>
+      {!blocked && <span className="ad-slot__badge">{label}</span>}
 
       {blocked ? (
-        <div className="ad-slot__caught">
-          <span className="ad-slot__emoji" aria-hidden="true">
-            🤡
-          </span>
-          <p className="ad-slot__caught-text">You Got Caught</p>
-        </div>
+        <img
+          className="ad-slot__placeholder"
+          src={placeholderSrc}
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
         <div className="ad-slot__content">
           {children ?? (

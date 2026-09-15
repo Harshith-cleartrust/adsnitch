@@ -59,10 +59,11 @@ export default function SitesPage() {
   return (
     <div className="admin">
       <header className="admin__header">
-        <p className="eyebrow">Install</p>
-        <h1>Script</h1>
+        <p className="eyebrow">Customer script</p>
+        <h1>Install</h1>
         <p className="lede">
-          Choose a policy. The script below uses only what is selected in that policy.
+          Select a policy to generate its install snippet. The script enforces only
+          the rules enabled in that policy.
         </p>
       </header>
 
@@ -98,8 +99,8 @@ export default function SitesPage() {
 
         {policy && (
           <div className="policy-script-rules">
-            <h2>In this policy</h2>
-            <p>{policy.enabled ? 'Policy enabled' : 'Policy disabled — this script will not block'}</p>
+            <h2>Active in this policy</h2>
+            <p>{policy.enabled ? 'Policy is enabled' : 'Policy is disabled — this script will not block'}</p>
             <h3>Exact URLs</h3>
             {policy.urls.length === 0 ? (
               <p className="empty">None</p>

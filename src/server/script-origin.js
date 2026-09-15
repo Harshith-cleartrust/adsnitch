@@ -1,4 +1,4 @@
-export const SCRIPT_VERSION = '0.3.0'
+export const SCRIPT_VERSION = '0.3.1'
 
 function isLocalHost(hostname) {
   const host = String(hostname || '').toLowerCase()

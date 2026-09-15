@@ -113,6 +113,12 @@ export async function setPolicyCategory(policyId, category, enabled) {
   )
 }
 
+export async function listPolicyPackKeywords(policyId, category) {
+  return request(
+    `/api/policies/${encodeURIComponent(policyId)}/categories/${encodeURIComponent(category)}`,
+  )
+}
+
 export async function previewPolicyMatch(policyId, url, text) {
   return request(`/api/policies/${encodeURIComponent(policyId)}/match`, {
     method: 'POST',

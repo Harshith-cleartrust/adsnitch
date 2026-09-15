@@ -1,7 +1,7 @@
 /**
  * AdSnitch customer script. Readable source.
  * Production serves the minified build at /a.js?k=SITE_KEY.
- * AdSnitch script version: 0.3.0
+ * AdSnitch script version: 0.3.1
  *
  * Does not contain policy rules, keywords, or credentials.
  * API origin is the script URL origin. There is no localhost fallback.
@@ -9,9 +9,19 @@
 ;(function (global) {
   'use strict'
 
-  var VERSION = '0.3.0'
+  var VERSION = '0.3.1'
   var ATTR = 'data-ad-url'
   var DONE = 'data-adpage-checked'
+  var PLACEHOLDERS = [
+    '/placeholders/landscape-01.png',
+    '/placeholders/landscape-02.png',
+    '/placeholders/landscape-03.png',
+    '/placeholders/landscape-04.png',
+    '/placeholders/landscape-05.png',
+    '/placeholders/landscape-06.png',
+    '/placeholders/landscape-07.png',
+    '/placeholders/landscape-08.png',
+  ]
   var pageLoadId =
     global.crypto && global.crypto.randomUUID
       ? global.crypto.randomUUID()
@@ -41,24 +51,28 @@
     slot.setAttribute(DONE, 'true')
   }
 
-  function replaceWithCaught(slot) {
+  function pickPlaceholder(seed) {
+    var hash = 0
+    var text = String(seed || '')
+    for (var i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) >>> 0
+    if (!text) hash = Math.floor(Math.random() * PLACEHOLDERS.length)
+    return PLACEHOLDERS[hash % PLACEHOLDERS.length]
+  }
+
+  function replaceWithCaught(slot, origin, seed) {
     if (slot.getAttribute('data-adpage-blocked') === 'true') return false
-    slot.style.display = slot.style.display || 'flex'
-    slot.style.alignItems = 'center'
-    slot.style.justifyContent = 'center'
+    var src = String(origin || '') + pickPlaceholder(seed || slot.getAttribute(ATTR) || '')
+    slot.style.display = slot.style.display || 'block'
     slot.style.boxSizing = 'border-box'
     slot.style.overflow = 'hidden'
+    slot.style.padding = '0'
     slot.style.borderRadius = slot.style.borderRadius || '16px'
-    slot.style.background =
-      'radial-gradient(180px 120px at 50% 12%, rgba(28,141,255,0.28), transparent 70%), linear-gradient(165deg, #05080e 0%, #0b2a55 100%)'
-    slot.style.color = '#f4f8ff'
-    slot.style.textAlign = 'center'
-    slot.style.fontFamily = 'Georgia, "Times New Roman", serif'
+    slot.style.background = '#0b1a2c'
     slot.innerHTML =
-      '<div style="padding:1rem;line-height:1.25">' +
-      '<div style="font-size:2.6rem;line-height:1" aria-hidden="true">🤡</div>' +
-      '<div style="margin-top:0.4rem;font-size:1.15rem;font-weight:600">You Got Caught</div>' +
-      '</div>'
+      '<img src="' +
+      src +
+      '" alt="" ' +
+      'style="display:block;width:100%;height:100%;object-fit:cover;object-position:center;" />'
     slot.setAttribute('data-adpage-blocked', 'true')
     slot.setAttribute(DONE, 'true')
     return true
@@ -133,7 +147,7 @@
         for (var j = 0; j < batch.length; j++) {
           var match = byId[batch[j].id]
           if (match && match.matched) {
-            if (replaceWithCaught(batch[j].slot)) {
+            if (replaceWithCaught(batch[j].slot, cfg.origin, batch[j].url)) {
               caught.push({ url: batch[j].url, text: batch[j].text })
             }
           } else {

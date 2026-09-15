@@ -134,7 +134,7 @@ function serveCustomerScript(res) {
   res.statusCode = 200
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
   res.setHeader('Cache-Control', 'public, max-age=300')
-  res.setHeader('X-AdSnitch-Version', '0.3.0')
+  res.setHeader('X-AdSnitch-Version', '0.3.1')
   res.end(fs.readFileSync(file))
 }
 
