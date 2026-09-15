@@ -85,7 +85,6 @@ export default function Login() {
           id="username"
           name="username"
           autoComplete="username"
-          placeholder="admin"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           disabled={busy}
@@ -98,7 +97,6 @@ export default function Login() {
             name="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
-            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={busy}
@@ -124,10 +122,6 @@ export default function Login() {
         <button type="submit" className="btn-primary login__submit" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
-
-        <p className="login__hint">
-          Demo account <code>admin</code> / <code>admin123</code>
-        </p>
       </form>
     </div>
   )
