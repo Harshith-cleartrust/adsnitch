@@ -8,4 +8,8 @@ export default defineConfig({
     // Allow opening sample landing + external pages against this origin
     cors: true,
   },
+  preview: {
+    // Railway (and similar) serve the app on a public hostname.
+    allowedHosts: true,
+  },
 })
